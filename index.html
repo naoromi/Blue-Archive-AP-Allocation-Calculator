@@ -52,6 +52,7 @@
         const AlertTriangle = (props) => <IconWrapper {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></IconWrapper>;
         const Info = (props) => <IconWrapper {...props}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="16" y2="12"/><line x1="12" x2="12.01" y1="8" y2="8"/></IconWrapper>;
         const CalculatorIcon = (props) => <IconWrapper {...props}><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></IconWrapper>;
+        const Layers = (props) => <IconWrapper {...props}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></IconWrapper>;
 
         // --- Main Component ---
         const BlueArchiveCalculator = () => {
@@ -60,7 +61,8 @@
                 totalDailyAP: 0,
                 ticketsPerAP: 0,
                 targetTickets: 0,
-                eventDuration: 0
+                eventDuration: 0,
+                stageCost: 20 // Default stage cost
             });
 
             // String values for input fields (allows typing expressions)
@@ -68,7 +70,8 @@
                 totalDailyAP: "",
                 ticketsPerAP: "",
                 targetTickets: "",
-                eventDuration: ""
+                eventDuration: "",
+                stageCost: "20"
             });
 
             const [results, setResults] = useState({
@@ -76,11 +79,13 @@
                 dailyEventAP: 0,
                 dailySpareAP: 0,
                 isPossible: true,
-                percentageUsed: 0
+                percentageUsed: 0,
+                runsPerDay: 0,
+                totalRuns: 0
             });
 
             useEffect(() => {
-                const { totalDailyAP, ticketsPerAP, targetTickets, eventDuration } = inputs;
+                const { totalDailyAP, ticketsPerAP, targetTickets, eventDuration, stageCost } = inputs;
                 
                 // If critical inputs are missing/zero, reset results or show neutral state
                 if (ticketsPerAP <= 0 || eventDuration <= 0) {
@@ -89,7 +94,9 @@
                         dailyEventAP: 0,
                         dailySpareAP: 0,
                         isPossible: true,
-                        percentageUsed: 0
+                        percentageUsed: 0,
+                        runsPerDay: 0,
+                        totalRuns: 0
                     });
                     return;
                 }
@@ -99,13 +106,20 @@
                 const dailySpareAP = totalDailyAP - dailyEventAP;
                 const isPossible = dailySpareAP >= 0;
                 const percentageUsed = totalDailyAP > 0 ? (dailyEventAP / totalDailyAP) * 100 : 0;
+                
+                // Runs calculation
+                const validStageCost = stageCost > 0 ? stageCost : 1;
+                const totalRuns = Math.ceil(totalAPRequired / validStageCost);
+                const runsPerDay = Math.ceil(dailyEventAP / validStageCost);
 
                 setResults({
                     totalAPRequired,
                     dailyEventAP,
                     dailySpareAP,
                     isPossible,
-                    percentageUsed: Math.min(percentageUsed, 100)
+                    percentageUsed: Math.min(percentageUsed, 100),
+                    runsPerDay,
+                    totalRuns
                 });
             }, [inputs]);
 
@@ -254,46 +268,70 @@
                                                 />
                                             </div>
                                         </div>
-                                        <div className="group">
-                                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex justify-between">
-                                                <span>Target Currency</span>
-                                                <span className="text-blue-400">Goal</span>
+                                        
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="group col-span-2 md:col-span-1">
+                                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex justify-between">
+                                                    <span>Target Currency</span>
+                                                </label>
+                                                <div className="relative">
+                                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500"><Target size={20} /></div>
+                                                    <input 
+                                                        type="text" 
+                                                        inputMode="decimal"
+                                                        name="targetTickets" 
+                                                        value={displayInputs.targetTickets} 
+                                                        onChange={handleInputChange} 
+                                                        onBlur={handleInputBlur}
+                                                        onKeyDown={handleKeyDown}
+                                                        placeholder="e.g. 15000"
+                                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all font-mono font-bold text-lg text-slate-700" 
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="group col-span-2 md:col-span-1">
+                                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex justify-between">
+                                                    <span>Duration (Days)</span>
+                                                </label>
+                                                <div className="relative">
+                                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-500"><Calendar size={20} /></div>
+                                                    <input 
+                                                        type="text" 
+                                                        inputMode="decimal"
+                                                        name="eventDuration" 
+                                                        value={displayInputs.eventDuration} 
+                                                        onChange={handleInputChange} 
+                                                        onBlur={handleInputBlur}
+                                                        onKeyDown={handleKeyDown}
+                                                        placeholder="e.g. 14"
+                                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all font-mono font-bold text-lg text-slate-700" 
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* New Stage Cost Input */}
+                                        <div className="group pt-4 border-t border-slate-100">
+                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex justify-between">
+                                                <span>Stage Cost (AP)</span>
+                                                <span className="text-slate-300">Optional</span>
                                             </label>
                                             <div className="relative">
-                                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500"><Target size={20} /></div>
+                                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400"><Layers size={20} /></div>
                                                 <input 
                                                     type="text" 
                                                     inputMode="decimal"
-                                                    name="targetTickets" 
-                                                    value={displayInputs.targetTickets} 
+                                                    name="stageCost" 
+                                                    value={displayInputs.stageCost} 
                                                     onChange={handleInputChange} 
                                                     onBlur={handleInputBlur}
                                                     onKeyDown={handleKeyDown}
-                                                    placeholder="e.g. 15000"
-                                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all font-mono font-bold text-lg text-slate-700" 
+                                                    placeholder="20"
+                                                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all font-mono font-bold text-base text-slate-600" 
                                                 />
                                             </div>
                                         </div>
-                                        <div className="group">
-                                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex justify-between">
-                                                <span>Event Duration</span>
-                                                <span className="text-blue-400">Days Remaining</span>
-                                            </label>
-                                            <div className="relative">
-                                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-500"><Calendar size={20} /></div>
-                                                <input 
-                                                    type="text" 
-                                                    inputMode="decimal"
-                                                    name="eventDuration" 
-                                                    value={displayInputs.eventDuration} 
-                                                    onChange={handleInputChange} 
-                                                    onBlur={handleInputBlur}
-                                                    onKeyDown={handleKeyDown}
-                                                    placeholder="e.g. 14"
-                                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all font-mono font-bold text-lg text-slate-700" 
-                                                />
-                                            </div>
-                                        </div>
+
                                     </div>
                                 </div>
 
@@ -302,7 +340,7 @@
                                    <div className="z-10">
                                      <h3 className="text-sm font-bold text-sky-800 mb-1">Arona's Note</h3>
                                      <p className="text-xs text-sky-700 leading-relaxed">
-                                       You can calculate inputs directly! Try typing "43/15" for Efficiency or "360+50" for AP.
+                                       Redoing math after playing stages? The daily requirement only drops slightly because your savings are spread across all remaining days!
                                      </p>
                                    </div>
                                    <div className="absolute -right-6 -bottom-6 w-24 h-24 border-4 border-sky-200 rounded-full opacity-50"></div>
@@ -322,11 +360,27 @@
                                     <div className="p-6 md:p-8">
                                         <div className="mb-8 text-center">
                                             <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">Required Daily Allocation</p>
-                                            <div className="flex items-center justify-center gap-2 text-5xl md:text-6xl font-black text-slate-800 tracking-tighter">
-                                                <div className={`mt-2 ${results.isPossible ? 'text-amber-400' : 'text-slate-300'}`}><Zap size={40} /></div>
-                                                <span>{formatNum(results.dailyEventAP)}</span>
+                                            <div className="flex items-center justify-center gap-4">
+                                                <div className="flex flex-col items-end">
+                                                    <div className="flex items-center gap-2 text-4xl md:text-5xl font-black text-slate-800 tracking-tighter">
+                                                        <div className={`mt-1 ${results.isPossible ? 'text-amber-400' : 'text-slate-300'}`}><Zap size={32} /></div>
+                                                        <span>{formatNum(results.dailyEventAP)}</span>
+                                                    </div>
+                                                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wide">AP / Day</span>
+                                                </div>
+
+                                                {/* Divider */}
+                                                <div className="w-px h-16 bg-slate-200"></div>
+
+                                                {/* Runs Display */}
+                                                <div className="flex flex-col items-start">
+                                                     <div className="flex items-center gap-2 text-4xl md:text-5xl font-black text-indigo-600 tracking-tighter">
+                                                        <span>{results.runsPerDay}</span>
+                                                        <div className="text-indigo-300 mt-1"><Layers size={32} /></div>
+                                                    </div>
+                                                    <span className="text-xs text-indigo-400 font-bold uppercase tracking-wide">Runs / Day</span>
+                                                </div>
                                             </div>
-                                            <p className="text-slate-400 font-medium mt-1">AP per Day</p>
                                         </div>
 
                                         <div className="mb-8">
@@ -343,16 +397,20 @@
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center justify-between group hover:border-blue-200 transition-colors">
-                                                <div><p className="text-xs font-bold text-slate-400 uppercase">Total AP Cost</p><p className="text-xl font-bold text-slate-700">{formatNum(results.totalAPRequired)}</p></div>
-                                                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-slate-300 shadow-sm group-hover:text-blue-400 transition-colors"><CalculatorIcon size={20} /></div>
-                                            </div>
-                                            <div className={`p-4 rounded-xl border flex items-center justify-between group transition-colors ${results.isPossible ? 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-300' : 'bg-rose-50/50 border-rose-100 hover:border-rose-300'}`}>
-                                                <div>
-                                                    <p className={`text-xs font-bold uppercase ${results.isPossible ? 'text-emerald-500' : 'text-rose-500'}`}>{results.isPossible ? 'Spare AP / Day' : 'AP Deficit / Day'}</p>
-                                                    <p className={`text-xl font-bold ${results.isPossible ? 'text-emerald-700' : 'text-rose-700'}`}>{formatNum(Math.abs(results.dailySpareAP))}</p>
+                                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between group hover:border-blue-200 transition-colors">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <p className="text-xs font-bold text-slate-400 uppercase">Total Runs Needed</p>
+                                                    <div className="text-slate-300 group-hover:text-blue-400 transition-colors"><Layers size={18} /></div>
                                                 </div>
-                                                <div className={`w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm ${results.isPossible ? 'text-emerald-400' : 'text-rose-400'}`}>{results.isPossible ? <CheckCircle size={20} /> : <AlertTriangle size={20} />}</div>
+                                                <p className="text-2xl font-bold text-slate-700">{formatNum(results.totalRuns)} <span className="text-sm text-slate-400 font-medium">runs</span></p>
+                                            </div>
+                                            
+                                            <div className={`p-4 rounded-xl border flex flex-col justify-between group transition-colors ${results.isPossible ? 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-300' : 'bg-rose-50/50 border-rose-100 hover:border-rose-300'}`}>
+                                                 <div className="flex justify-between items-start mb-2">
+                                                    <p className={`text-xs font-bold uppercase ${results.isPossible ? 'text-emerald-500' : 'text-rose-500'}`}>{results.isPossible ? 'Spare AP / Day' : 'AP Deficit / Day'}</p>
+                                                    <div className={results.isPossible ? 'text-emerald-400' : 'text-rose-400'}>{results.isPossible ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}</div>
+                                                </div>
+                                                <p className={`text-2xl font-bold ${results.isPossible ? 'text-emerald-700' : 'text-rose-700'}`}>{formatNum(Math.abs(results.dailySpareAP))}</p>
                                             </div>
                                         </div>
                                     </div>
